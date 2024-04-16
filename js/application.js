@@ -30,6 +30,7 @@ window.requestAnimationFrame(function () {
   }
   container.innerHTML = html;
   game = new GameManager(size, KeyboardInputManager, HTMLActuator, LocalScoreManager);
+  sendBuzz({"type":"componentState","action":"start-game","channel":"webhook-a"});
   var mode = getMode();
   switch (mode) {
   case "alwaysTwo":
@@ -190,7 +191,11 @@ function changeRule(add, merge, win) {
             self.grid.removeTile(tile);
             tile.updatePosition(positions.next);
             self.score += merged.value;
-            if (win(merged.value)) self.won = true;
+            sendBuzz({"type":"updateVariable","value":`${merged.value}`,"variable":"score-increase"});
+            if (win(merged.value)) {
+              sendBuzz({"type":"componentState","channel":"webhook-a","action":"game-won"});
+              self.won = true;
+            }
           } else {
             self.moveTile(tile, positions.farthest);
           }
@@ -211,6 +216,7 @@ function changeRule(add, merge, win) {
   game.inputManager.events["move"] = [];
   game.inputManager.on("move", game.move.bind(game));
   game.restart();
+  sendBuzz({"type":"componentState","channel":"webhook-a","action":"restart-game"});
 }
 
 function normalAdd() {
@@ -372,4 +378,17 @@ function loadBoard() {
     }
     game.actuate();
   }
+}
+
+function sendBuzz(data) {
+  return fetch(
+    "https://webhook.xtoys.app/T2Ot1dkgubKj",
+    {
+      method: "POST",
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(data)
+    }
+  );
 }
